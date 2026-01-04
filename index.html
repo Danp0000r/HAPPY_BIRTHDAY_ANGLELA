@@ -1,0 +1,700 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Your Birthday Wrapped</title>
+    <!-- Importing Premium Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@700;900&family=Playfair+Display:ital,wght@0,400;1,700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary-bg: #0a0a1a;
+            --accent-pink: #ff2e63;
+            --accent-gold: #ffca28;
+            --font-main: 'Montserrat', sans-serif;
+            --font-serif: 'Playfair Display', serif;
+        }
+
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background-color: var(--primary-bg);
+            font-family: var(--font-main);
+            color: white;
+        }
+
+        /* Slide System */
+        .story-container {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            transition: transform 0.8s cubic-bezier(0.85, 0, 0.15, 1);
+            /* allow JS-driven swipe handling (prevent browser gesture capture on mobile) */
+            touch-action: none;
+            -webkit-user-select: none;
+            user-select: none;
+        }
+        /* disable transition while dragging so container follows pointer directly */
+        .story-container.dragging { transition: none !important; }
+
+        .slide {
+            min-width: 100%;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 40px 20px;
+            box-sizing: border-box;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        /* Background Effects */
+        .bg-shapes {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 0;
+            pointer-events: none;
+        }
+
+        .shape {
+            position: absolute;
+            filter: blur(80px);
+            border-radius: 50%;
+            opacity: 0.5;
+            animation: floatShape 12s infinite alternate ease-in-out;
+        }
+
+        @keyframes floatShape {
+            from { transform: translate(-5%, -5%) scale(1) rotate(0deg); }
+            to { transform: translate(5%, 5%) scale(1.2) rotate(10deg); }
+        }
+
+        /* Progress Bar */
+        .progress-container {
+            position: absolute;
+            top: 25px;
+            left: 20px;
+            right: 20px;
+            display: flex;
+            gap: 8px;
+            z-index: 100;
+        }
+
+        .progress-bar {
+            height: 3px;
+            background: rgba(255, 255, 255, 0.2);
+            flex-grow: 1;
+            border-radius: 10px;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: white;
+            width: 0%;
+            transition: width 0.4s ease;
+        }
+
+        /* Image Placeholder System */
+        .img-placeholder {
+            position: relative;
+            background: rgba(255, 255, 255, 0.1);
+            border: 2px dashed rgba(255, 255, 255, 0.3);
+            border-radius: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.3);
+            margin: 20px;
+            opacity: 0;
+            transform: translateY(30px);
+            transition: all 0.8s cubic-bezier(0.2, 0.8, 0.2, 1) 0.8s;
+            z-index: 3;
+            cursor: pointer;
+        }
+
+        .img-placeholder img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            position: absolute;
+            top: 0;
+            left: 0;
+        }
+
+        .slide.active .img-placeholder {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        /* Typography */
+        .content {
+            position: relative;
+            z-index: 2;
+            width: 100%;
+            max-width: 900px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .wrapped-title {
+            font-size: 0.8rem;
+            text-transform: uppercase;
+            letter-spacing: 6px;
+            margin-bottom: 25px;
+            color: var(--accent-gold);
+            font-weight: 900;
+            opacity: 0;
+            transform: translateY(-20px);
+            transition: all 0.8s cubic-bezier(0.2, 0.8, 0.2, 1) 0.4s;
+        }
+
+        .main-text {
+            font-size: clamp(2rem, 9vw, 4.2rem);
+            font-weight: 900;
+            line-height: 1.05;
+            margin: 0;
+            letter-spacing: -2px;
+            opacity: 0;
+            transform: scale(0.9);
+            transition: all 0.9s cubic-bezier(0.34, 1.56, 0.64, 1) 0.6s;
+        }
+
+        .sub-text {
+            font-family: var(--font-serif);
+            font-size: clamp(1rem, 3.5vw, 1.6rem);
+            margin-top: 25px;
+            opacity: 0;
+            transform: translateY(20px);
+            transition: all 0.8s ease-out 0.9s;
+            max-width: 700px;
+            line-height: 1.3;
+            font-style: italic;
+            font-weight: 400;
+        }
+
+        .slide.active .wrapped-title,
+        .slide.active .main-text,
+        .slide.active .sub-text {
+            opacity: 1;
+            transform: translate(0) scale(1);
+        }
+
+        /* Slide Colors */
+        .slide-1 { background: #3a15cf; }
+        .slide-2 { background: #138a3e; }
+        .slide-3 { background: #d81b60; }
+        .slide-4 { background: #e65100; }
+        .slide-5 { background: #000; }
+
+        /* Last Slide Specifics */
+        .tap-prompt {
+            position: absolute;
+            bottom: 40px;
+            font-size: 0.8rem;
+            letter-spacing: 4px;
+            color: rgba(255, 255, 255, 0.6);
+            text-transform: uppercase;
+            animation: pulseText 2s infinite;
+            z-index: 5;
+        }
+
+        @keyframes pulseText {
+            0%, 100% { opacity: 0.3; transform: scale(0.95); }
+            50% { opacity: 0.8; transform: scale(1.05); }
+        }
+
+        .funny-sticker {
+            position: absolute;
+            width: 110px;            /* consistent small size */
+            height: 110px;           /* consistent small size */
+            transform: translate(-50%, -50%) scale(0);
+            z-index: 100; /* Above Fireworks */
+            pointer-events: none;
+            transition: transform 0.35s ease, opacity 0.3s;
+            opacity: 0;
+        }
+
+        /* Hidden template state for cloning */
+        .funny-sticker.template { display: none; }
+
+        .funny-sticker.active {
+            transform: translate(-50%, -50%) scale(1);
+            opacity: 1;
+        }
+
+        /* ensure image inside sticker always fits container uniformly */
+        .funny-sticker img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            display: block;
+        }
+
+        /* Navigation */
+        .nav-btn {
+            position: absolute;
+            bottom: 40px;
+            background: white;
+            color: black;
+            border: none;
+            padding: 14px 32px;
+            border-radius: 50px;
+            font-weight: 900;
+            cursor: pointer;
+            z-index: 101;
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            box-shadow: 0 15px 30px rgba(0,0,0,0.4);
+        }
+
+        .next-btn { right: 30px; }
+        .prev-btn { left: 30px; display: none; background: rgba(255,255,255,0.15); color: white; backdrop-filter: blur(5px); }
+
+        /* High Z-Index for Canvas */
+        #canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 50; /* Above text and placeholders */
+            pointer-events: auto;
+        }
+
+        /* Intro giftwrap + ribbon styles (minimal) */
+        .slide-intro { background: linear-gradient(135deg,#ff6b6b 0%, #ffd166 50%, #6fffe9 100%); display:flex; justify-content:center; align-items:center; position:relative; overflow:hidden; }
+        .intro-wrap {
+            position: relative;
+            width: 260px;
+            height: 260px;
+            border-radius: 16px;
+            background: linear-gradient(180deg,#fff 0%, #f4f4f4 100%);
+            box-shadow: 0 18px 50px rgba(0,0,0,0.35);
+        }
+        .ribbon { position:absolute; left:50%; top:50%; transform:translate(-50%,-50%); pointer-events:none; }
+        .ribbon::before, .ribbon::after {
+            content:''; position:absolute; width:320px; height:48px; left:50%; top:50%; transform:translate(-50%,-50%) rotate(18deg);
+            background:linear-gradient(90deg,#ff2e63,#ffca28,#6a15cf); border-radius:8px; box-shadow:0 6px 18px rgba(0,0,0,0.22);
+        }
+        .ribbon::after { transform:translate(-50%,-50%) rotate(-18deg); }
+        .gift-bow { position:absolute; width:70px; height:70px; left:50%; top:40%; transform:translate(-50%,-50%); border-radius:50%;
+            background: radial-gradient(circle at 30% 30%, #ff2e63, #d81b60); box-shadow:0 6px 18px rgba(0,0,0,0.25); }
+        .intro-text { position:absolute; bottom:36px; width:100%; text-align:center; color:white; font-weight:900; letter-spacing:1.6px; text-transform:uppercase; font-family:var(--font-main); }
+        .intro-prompt { font-size:1rem; }
+        .intro-sub { font-family:var(--font-serif); font-style:italic; opacity:0.9; margin-top:6px; font-size:0.85rem; }
+        /* opening animation: scale ribbons/bow away and tilt box a bit */
+        .slide-intro.opening .ribbon::before, .slide-intro.opening .ribbon::after, .slide-intro.opening .gift-bow {
+            transform: translate(-50%,-50%) scale(0.06) rotate(40deg); opacity:0; transition: all 700ms cubic-bezier(.2,.9,.2,1);
+        }
+        .slide-intro.opening .intro-wrap { transform: rotate(-6deg) scale(0.97); transition: transform 700ms ease; }
+
+        @media (max-width: 768px) {
+            /* Portrait layout: stack slides vertically and optimize sizing */
+            .story-container { flex-direction: column; }
+            .slide { width: 100%; min-height: 100vh; padding: 28px 16px; }
+            .img-placeholder { width: 90vw !important; height: auto !important; aspect-ratio: 4/3; max-height: 360px; border-radius: 16px; }
+            .wrapped-title { font-size: 0.7rem; letter-spacing: 4px; margin-bottom: 18px; }
+            .main-text { font-size: clamp(1.6rem, 9vw, 3.2rem); }
+            .sub-text { font-size: clamp(0.9rem, 3.8vw, 1.2rem); }
+            .funny-sticker { width: 84px; height: 84px; } /* smaller on mobile */
+            .nav-btn { padding: 10px 22px; bottom: 18px; font-size: 0.8rem; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="progress-container" id="progressTicks"></div>
+
+    <div class="story-container" id="storyContainer">
+        <!-- Intro Slide (index 0) -->
+        <div class="slide slide-intro active" role="button" aria-label="Intro - tap to open">
+            <div class="intro-wrap">
+                <div class="ribbon" aria-hidden="true"></div>
+                <div class="gift-bow" aria-hidden="true"></div>
+            </div>
+            <div class="intro-text">
+                <div class="intro-prompt">Are you ready?</div>
+                <div class="intro-sub">Tap the screen</div>
+            </div>
+        </div>
+
+        <!-- Slide 1 -->
+        <div class="slide slide-1">
+            <div class="bg-shapes">
+                <div class="shape" style="width: 50vw; height: 50vw; background: #6a1b9a; top: -10%; left: -10%;"></div>
+            </div>
+            <div class="content">
+                <div class="wrapped-title">A Core Memory</div>
+                <div class="main-text">Back in senior high,</div>
+                <div class="sub-text">this trio accidentally happened.</div>
+            </div>
+            <div class="img-placeholder" style="width: 85%; max-width: 600px; height: 300px; border-radius: 24px;" onclick="uploadImg(this)">
+                <img src="1.jpg" onerror="this.style.display='none'">
+            </div>
+        </div>
+
+        <!-- Slide 2 -->
+        <div class="slide slide-2">
+            <div class="bg-shapes">
+                <div class="shape" style="width: 60vw; height: 60vw; background: #004d40; top: 10%; right: -20%;"></div>
+            </div>
+            <div class="img-placeholder" style="width: 320px; height: 400px; transform: rotate(-3deg); background: #eee; padding: 10px 10px 60px 10px; border: none;" onclick="uploadImg(this)">
+                <img src="2.jpg" onerror="this.style.display='none'">
+            </div>
+            <div class="content">
+                <div class="wrapped-title">The Legend</div>
+                <div class="main-text">Years passed, <br>people changed...</div>
+                <div class="sub-text">the stupidity somehow stayed.</div>
+            </div>
+        </div>
+
+        <!-- Slide 3 -->
+        <div class="slide slide-3">
+            <div class="bg-shapes">
+                <div class="shape" style="width: 50vw; height: 50vw; background: #880e4f; bottom: -10%; left: -10%;"></div>
+            </div>
+            <div class="content">
+                <div class="wrapped-title">Unfiltered Joy</div>
+                <div class="main-text">Through exams, stress, <br>and life stuff,</div>
+                <div class="sub-text">we still laugh at the same nonsense.</div>
+            </div>
+            <div class="img-placeholder" style="width: 85%; max-width: 600px; height: 300px; border-radius: 100px 20px 100px 20px; margin-top: 30px;" onclick="uploadImg(this)">
+                <img src="3.jpg" onerror="this.style.display='none'">
+            </div>
+        </div>
+
+        <!-- Slide 4 -->
+        <div class="slide slide-4">
+            <div class="bg-shapes">
+                <div class="shape" style="width: 70vw; height: 70vw; background: #bf360c; top: -10%; right: -20%;"></div>
+            </div>
+            <div class="content">
+                <div class="wrapped-title">The Truth</div>
+                <div class="main-text">Different paths, <br>same trio.</div>
+                <div class="sub-text" style="font-style: normal; font-weight: 700;">3 Idiots forever 🤍</div>
+            </div>
+            <div class="img-placeholder" style="width: 540px; height: 405px; margin-top: 15px;" onclick="uploadImg(this)">
+                <img src="4.jpg" onerror="this.style.display='none'">
+            </div>
+        </div>
+
+        <!-- Slide 5 -->
+        <div class="slide slide-5">
+            <!-- Hidden template used for cloning multiple stickers -->
+            <div id="funnySticker" class="funny-sticker template" aria-hidden="true">
+                <img src="" alt="Funny Surprise">
+            </div>
+            <div class="content" style="pointer-events: none;">
+                <h1 class="main-text">ㅤㅤHappy Birthdayㅤㅤ 🎉🎉ANGELA🎉🎉</h1>
+                <p class="sub-text">Thanks for being our favorite idiot.</p>
+            </div>
+            <div class="tap-prompt">Tap the screen</div>
+            <canvas id="canvas"></canvas>
+        </div>
+    </div>
+
+    <input type="file" id="imgInput" style="display:none" accept="image/*">
+    <button class="nav-btn prev-btn" id="prevBtn">Back</button>
+    <button class="nav-btn next-btn" id="nextBtn">Next</button>
+
+    <script>
+        /************************************************************
+         * 📸 SURPRISE STICKER SETTINGS
+         ************************************************************/
+        // Change this number if you add more stickers (5.png, 6.png, 7.png, 8.png...)
+        const totalStickerCount = 4; 
+        const stickerStartNumber = 5;
+        const stickerExtension = ".png"; // Changed to PNG
+        /************************************************************/
+
+        const container = document.getElementById('storyContainer');
+        const nextBtn = document.getElementById('nextBtn');
+        const prevBtn = document.getElementById('prevBtn');
+        const progressContainer = document.getElementById('progressTicks');
+        const slides = document.querySelectorAll('.slide');
+        const introSlide = document.querySelector('.slide-intro');
+		const imgInput = document.getElementById('imgInput');
+        // template element to clone for each sticker
+        const stickerTemplate = document.getElementById('funnySticker');
+        
+        let lastStickerNum = -1;
+        let currentSlide = 0;
+        const totalSlides = slides.length;
+        let activePlaceholder = null;
+        let mobileLayout = window.matchMedia('(max-width: 768px)').matches;
+
+        function uploadImg(placeholder) {
+            activePlaceholder = placeholder;
+            imgInput.click();
+        }
+
+        imgInput.onchange = (e) => {
+            const file = e.target.files[0];
+            if (file && activePlaceholder) {
+                const reader = new FileReader();
+                reader.onload = (event) => {
+                    activePlaceholder.innerHTML = `<img src="${event.target.result}">`;
+                };
+                reader.readAsDataURL(file);
+            }
+        };
+
+        for (let i = 0; i < totalSlides; i++) {
+            const tick = document.createElement('div');
+            tick.className = 'progress-bar';
+            tick.innerHTML = `<div class="progress-fill" id="fill-${i}"></div>`;
+            progressContainer.appendChild(tick);
+        }
+
+        function updateNavigation() {
+            if (mobileLayout) {
+                container.style.transform = `translateY(-${currentSlide * 100}%)`;
+            } else {
+                container.style.transform = `translateX(-${currentSlide * 100}%)`;
+            }
+            slides.forEach((s, i) => i === currentSlide ? s.classList.add('active') : s.classList.remove('active'));
+            prevBtn.style.display = currentSlide === 0 ? 'none' : 'block';
+            nextBtn.style.display = currentSlide === totalSlides - 1 ? 'none' : 'block';
+            if (currentSlide === totalSlides - 1) initCanvas();
+            for (let i = 0; i < totalSlides; i++) {
+                document.getElementById(`fill-${i}`).style.width = i <= currentSlide ? '100%' : '0%';
+            }
+            // enable/disable canvas pointer events when last slide active
+            if (typeof canvas !== 'undefined' && canvas) {
+                canvas.style.pointerEvents = currentSlide === totalSlides - 1 ? 'auto' : 'none';
+            }
+        }
+
+        nextBtn.addEventListener('click', () => { if (currentSlide < totalSlides - 1) { currentSlide++; updateNavigation(); } });
+        prevBtn.addEventListener('click', () => { if (currentSlide > 0) { currentSlide--; updateNavigation(); } });
+
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        let width, height, confetti = [], fireworks = [], canvasInitialized = false;
+
+        function initCanvas() {
+            if (canvasInitialized) return;
+            canvasInitialized = true;
+            resize();
+            for (let i = 0; i < 150; i++) confetti.push(new ConfettiPiece());
+            loop();
+        }
+
+        function resize() {
+            mobileLayout = window.matchMedia('(max-width: 768px)').matches;
+            width = canvas.width = window.innerWidth;
+            height = canvas.height = window.innerHeight;
+            // reapply transform for new layout
+            updateNavigation();
+        }
+
+        // Create a sticker clone at (x, y). Multiple clones can exist simultaneously.
+        function triggerSticker(x, y) {
+            let randomNum;
+            do {
+                randomNum = Math.floor(Math.random() * totalStickerCount) + stickerStartNumber;
+            } while (randomNum === lastStickerNum && totalStickerCount > 1);
+            
+            lastStickerNum = randomNum;
+            
+            const clone = stickerTemplate.cloneNode(true);
+            clone.classList.remove('template');
+            clone.removeAttribute('id');
+            clone.style.display = 'block';
+            clone.style.left = x + 'px';
+            clone.style.top = y + 'px';
+            const img = clone.querySelector('img');
+            img.src = `${randomNum}${stickerExtension}`;
+
+            // append to body so z-index/positioning stays consistent with existing layout
+            document.body.appendChild(clone);
+
+            // force reflow then animate
+            void clone.offsetWidth;
+            clone.classList.add('active');
+
+            // remove after animation finishes
+            setTimeout(() => {
+                clone.classList.remove('active');
+                // give time for collapse transition before removing from DOM
+                setTimeout(() => clone.remove(), 400);
+            }, 1200);
+        }
+
+        class ConfettiPiece {
+            constructor() { this.init(); }
+            init() {
+                this.x = Math.random() * width; this.y = Math.random() * height - height;
+                this.r = Math.random() * 6 + 4; this.color = `hsl(${Math.random() * 360}, 85%, 65%)`;
+                this.tiltAngle = 0; this.tiltAngleInc = Math.random() * 0.1 + 0.05;
+            }
+            update() { this.y += 2.5; this.tiltAngle += this.tiltAngleInc; if (this.y > height) this.init(); }
+            draw() {
+                ctx.beginPath(); ctx.lineWidth = this.r / 2; ctx.strokeStyle = this.color;
+                ctx.moveTo(this.x + (Math.sin(this.tiltAngle) * 12), this.y);
+                ctx.lineTo(this.x + (Math.sin(this.tiltAngle) * 12), this.y + 12); ctx.stroke();
+            }
+        }
+
+        class Firework {
+            constructor(tx, ty) {
+                this.x = width / 2; this.y = height; this.tx = tx; this.ty = ty;
+                this.dist = Math.hypot(tx - this.x, ty - this.y); this.traveled = 0;
+                this.angle = Math.atan2(ty - this.y, tx - this.x); this.speed = 22;
+            }
+            update(idx) {
+                this.speed *= 1.05;
+                let vx = Math.cos(this.angle) * this.speed;
+                let vy = Math.sin(this.angle) * this.speed;
+                this.traveled += Math.hypot(vx, vy);
+                if (this.traveled >= this.dist) { 
+                    explode(this.tx, this.ty); 
+                    triggerSticker(this.tx, this.ty);
+                    fireworks.splice(idx, 1); 
+                }
+                else { this.x += vx; this.y += vy; }
+            }
+            draw() {
+                ctx.beginPath(); ctx.strokeStyle = 'white'; ctx.lineWidth = 2;
+                ctx.moveTo(this.x, this.y); ctx.lineTo(this.x - Math.cos(this.angle)*15, this.y - Math.sin(this.angle)*15);
+                ctx.stroke();
+            }
+        }
+
+        function explode(x, y) { for (let i = 0; i < 60; i++) fireworks.push(new Particle(x, y)); }
+
+        class Particle {
+            constructor(x, y) {
+                this.x = x; this.y = y; this.angle = Math.random() * Math.PI * 2;
+                this.speed = Math.random() * 10 + 2; this.friction = 0.95; this.gravity = 0.3;
+                this.hue = Math.random() * 360; this.alpha = 1; this.decay = Math.random() * 0.02 + 0.01;
+            }
+            update(idx) {
+                this.speed *= this.friction; this.x += Math.cos(this.angle) * this.speed;
+                this.y += Math.sin(this.angle) * this.speed + this.gravity; this.alpha -= this.decay;
+                if (this.alpha <= 0) fireworks.splice(idx, 1);
+            }
+            draw() {
+                ctx.beginPath(); ctx.arc(this.x, this.y, 2, 0, Math.PI * 2);
+                ctx.fillStyle = `hsla(${this.hue}, 100%, 75%, ${this.alpha})`; ctx.fill();
+            }
+        }
+
+        function loop() {
+            ctx.globalCompositeOperation = 'destination-out'; ctx.fillStyle = 'rgba(0, 0, 0, 0.2)';
+            ctx.fillRect(0, 0, width, height); ctx.globalCompositeOperation = 'lighter';
+            confetti.forEach(c => { c.draw(); c.update(); });
+            fireworks.forEach((f, i) => { f.draw(); f.update(i); });
+            requestAnimationFrame(loop);
+        }
+
+        // fireworks via pointerdown (works for mouse & touch) but only when last slide active
+        canvas.addEventListener('pointerdown', (e) => {
+            if (currentSlide === totalSlides - 1) {
+                if (e.pointerType === 'mouse' && e.button !== 0) return;
+                fireworks.push(new Firework(e.clientX, e.clientY));
+            }
+        }, { passive: true });
+
+        // Intro reveal: pointer/tap + keyboard support
+        function startIntroReveal() {
+            if (!introSlide) return;
+            if (introSlide.classList.contains('opening')) return;
+            introSlide.classList.add('opening');
+            setTimeout(() => {
+                currentSlide = 1; updateNavigation();
+                introSlide.classList.remove('opening');
+            }, 800);
+        }
+        if (introSlide) {
+            introSlide.addEventListener('pointerdown', (e) => { if (e.pointerType === 'mouse' && e.button !== 0) return; startIntroReveal(); }, { passive: true });
+            introSlide.tabIndex = 0;
+            introSlide.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') startIntroReveal(); });
+        }
+
+        // Unified pointer swipe/tap handler with dynamic dragging
+        let pDown = false, pStartX = 0, pStartY = 0, pStartId = null, pStartTime = 0;
+        let baseTranslate = 0; // in px
+        container.addEventListener('pointerdown', (ev) => {
+            if (ev.pointerType === 'mouse' && ev.button !== 0) return;
+            if (ev.target && ev.target.closest && ev.target.closest('.nav-btn, .img-placeholder, input, #canvas')) return;
+            pDown = true;
+            pStartX = ev.clientX; pStartY = ev.clientY; pStartId = ev.pointerId; pStartTime = Date.now();
+            // compute baseTranslate in px for current slide
+            const vw = window.innerWidth;
+            const vh = window.innerHeight;
+            baseTranslate = mobileLayout ? -currentSlide * vh : -currentSlide * vw;
+            container.classList.add('dragging');
+            try { container.setPointerCapture(pStartId); } catch(e) {}
+        }, { passive: true });
+
+        container.addEventListener('pointermove', (ev) => {
+            if (!pDown || ev.pointerId !== pStartId) return;
+            const dx = ev.clientX - pStartX;
+            const dy = ev.clientY - pStartY;
+            // apply resistance if at edges
+            let move = mobileLayout ? dy : dx;
+            if ((currentSlide === 0 && move > 0) || (currentSlide === totalSlides - 1 && move < 0)) {
+                move *= 0.36; // resistance
+            }
+            if (mobileLayout) {
+                container.style.transform = `translateY(${baseTranslate + move}px)`;
+            } else {
+                container.style.transform = `translateX(${baseTranslate + move}px)`;
+            }
+        }, { passive: true });
+
+        container.addEventListener('pointerup', (ev) => {
+            if (!pDown || ev.pointerId !== pStartId) return;
+            pDown = false;
+            try { container.releasePointerCapture(pStartId); } catch(e) {}
+            container.classList.remove('dragging');
+            const dx = ev.clientX - pStartX, dy = ev.clientY - pStartY;
+            const absX = Math.abs(dx), absY = Math.abs(dy);
+            const time = Date.now() - pStartTime;
+            const primaryMove = mobileLayout ? dy : dx;
+            const size = mobileLayout ? window.innerHeight : window.innerWidth;
+            const threshold = Math.max(40, size * 0.18); // distance threshold
+            // if moved enough or quick flick -> change slide
+            if (Math.abs(primaryMove) > threshold || (Math.abs(primaryMove) > 10 && time < 220)) {
+                if (primaryMove < 0 && currentSlide < totalSlides - 1) currentSlide++;
+                else if (primaryMove > 0 && currentSlide > 0) currentSlide--;
+            }
+            // snap to chosen slide using normal CSS transition via updateNavigation
+            updateNavigation();
+            // small tap logic if click without drag
+            if (Math.abs(dx) < 12 && Math.abs(dy) < 12 && time < 400) {
+                if (currentSlide === 0) startIntroReveal();
+                else if (currentSlide === totalSlides - 1) fireworks.push(new Firework(ev.clientX, ev.clientY));
+            }
+        }, { passive: true });
+ 
+        // keyboard arrows for desktop
+        window.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowRight') { if (!mobileLayout && currentSlide < totalSlides - 1) { currentSlide++; updateNavigation(); } }
+            if (e.key === 'ArrowLeft') { if (!mobileLayout && currentSlide > 0) { currentSlide--; updateNavigation(); } }
+            if (e.key === 'ArrowDown') { if (mobileLayout && currentSlide < totalSlides - 1) { currentSlide++; updateNavigation(); } }
+            if (e.key === 'ArrowUp') { if (mobileLayout && currentSlide > 0) { currentSlide--; updateNavigation(); } }
+        });
+
+        // recompute layout on resize
+        window.addEventListener('resize', resize);
+        // initial navigation render
+        updateNavigation();
+    </script>
+</body>
+</html>
